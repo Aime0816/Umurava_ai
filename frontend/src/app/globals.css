@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --brand-accent: #4f8ef7;
+    --surface-primary: #0f1117;
+    --surface-secondary: #0a0c13;
+    --border-subtle: rgba(255, 255, 255, 0.07);
+    --border-muted:  rgba(255, 255, 255, 0.12);
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--surface-primary);
+    color: #e8eaf0;
+    font-feature-settings: 'ss01', 'cv01';
+  }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+}
+
+@layer components {
+  .card {
+    @apply bg-white/[0.03] border border-white/[0.07] rounded-xl;
+  }
+
+  .card-header {
+    @apply px-5 py-4 border-b border-white/[0.06] flex items-center justify-between;
+  }
+
+  .card-title {
+    @apply text-sm font-medium text-white/80;
+  }
+
+  .card-body {
+    @apply p-5;
+  }
+
+  .form-label {
+    @apply block text-xs text-white/50 mb-1.5 tracking-wide;
+  }
+
+  .form-input {
+    @apply w-full bg-white/[0.05] border border-white/[0.1] rounded-lg px-3 py-2
+           text-sm text-white placeholder-white/25
+           focus:outline-none focus:border-brand-500/50 focus:bg-brand-500/5
+           transition-colors duration-150;
+  }
+
+  .form-textarea {
+    @apply form-input resize-none min-h-[100px] leading-relaxed;
+  }
+
+  .form-select {
+    @apply form-input cursor-pointer;
+  }
+
+  .btn {
+    @apply inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm
+           transition-all duration-150 cursor-pointer border-0 font-sans;
+  }
+
+  .btn-primary {
+    @apply btn bg-brand-500 text-white hover:bg-brand-600 active:scale-[0.98];
+  }
+
+  .btn-ghost {
+    @apply btn bg-white/[0.06] text-white/70 hover:bg-white/[0.1] hover:text-white;
+  }
+
+  .btn-sm {
+    @apply px-2.5 py-1.5 text-xs;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border;
+  }
+
+  .badge-success { @apply badge text-emerald-400 bg-emerald-400/10 border-emerald-400/20; }
+  .badge-info    { @apply badge text-blue-400 bg-blue-400/10 border-blue-400/20; }
+  .badge-warn    { @apply badge text-amber-400 bg-amber-400/10 border-amber-400/20; }
+  .badge-muted   { @apply badge text-white/40 bg-white/[0.06] border-white/10; }
+  .badge-danger  { @apply badge text-red-400 bg-red-400/10 border-red-400/20; }
+
+  .nav-item {
+    @apply flex items-center gap-2.5 px-5 py-2 text-sm text-white/50 cursor-pointer
+           transition-all duration-150 relative;
+  }
+
+  .nav-item:hover { @apply text-white bg-white/[0.04]; }
+
+  .nav-item.active {
+    @apply text-white bg-brand-500/10;
+  }
+
+  .nav-item.active::before {
+    content: '';
+    @apply absolute left-0 top-1 bottom-1 w-0.5 bg-brand-500 rounded-r;
+  }
+}
