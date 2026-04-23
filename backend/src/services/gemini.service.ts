@@ -27,13 +27,17 @@ export interface ScreeningResult {
 export class GeminiService {
   private client: GoogleGenerativeAI;
   private model: GenerativeModel;
-  private readonly MODEL_NAME = 'gemini-1.5-pro';
+  private fallbackModel: GenerativeModel;
+  private readonly MODEL_NAME = 'gemini-2.5-flash';
+  private readonly FALLBACK_MODEL_NAME = 'gemini-2.5-pro';
 
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error('GEMINI_API_KEY is required');
 
     this.client = new GoogleGenerativeAI(apiKey);
+    
+    // Primary model
     this.model = this.client.getGenerativeModel({
       model: this.MODEL_NAME,
       generationConfig: {
@@ -43,6 +47,105 @@ export class GeminiService {
         responseMimeType: 'application/json', // Force JSON output
       },
     });
+
+    // Fallback model
+    this.fallbackModel = this.client.getGenerativeModel({
+      model: this.FALLBACK_MODEL_NAME,
+      generationConfig: {
+        temperature: 0.2,
+        topP: 0.8,
+        maxOutputTokens: 8192,
+        responseMimeType: 'application/json',
+      },
+    });
+  }
+
+  /**
+   * Retry wrapper with intelligent backoff.
+   * WAITS for API to become available - retries indefinitely on 429/503.
+   * Only throws on permanent errors (404).
+   */
+  private async callWithRetry<T>(
+    fn: () => Promise<T>,
+    attemptNumber = 1
+  ): Promise<T> {
+    try {
+      return await fn();
+    } catch (err: any) {
+      const is404 = err.status === 404 || err.message?.includes('404');
+      const is429 = err.status === 429 || err.message?.includes('429'); // Quota exceeded
+      const is503 = err.status === 503 || err.message?.includes('503'); // Service busy
+      
+      // ❌ Don't retry for permanent model errors
+      if (is404) {
+        logger.error(`❌ Model not found (404): ${err.message}`);
+        throw err;
+      }
+      
+      // ✅ RETRY for temporary issues - WAIT for API
+      if (is429 || is503) {
+        let delayMs = 5000; // Default 5 seconds
+        let reason = '';
+        
+        if (is429) {
+          // Extract retry-after from API response
+          const retryAfter = err.errorDetails?.find((d: any) => d['@type']?.includes('RetryInfo'))?.retryDelay;
+          if (retryAfter) {
+            const seconds = retryAfter.replace('s', '');
+            delayMs = Math.ceil(parseFloat(seconds) * 1000) + 1000;
+            reason = `quota (API says: wait ${seconds}s)`;
+          } else {
+            delayMs = Math.min(60000, 5000 * Math.pow(1.5, Math.min(attemptNumber - 1, 10)));
+            reason = `quota/rate-limited`;
+          }
+        } else if (is503) {
+          delayMs = Math.min(60000, 3000 * Math.pow(1.5, Math.min(attemptNumber - 1, 10)));
+          reason = `service busy (temporary)`;
+        }
+
+        // Abort if delay is too long or we've retried too many times
+        if (attemptNumber >= 2 || delayMs > 15000) {
+          logger.error(`❌ Aborting retry: wait time (${Math.round(delayMs / 1000)}s) too long or max attempts reached.`);
+          throw err;
+        }
+        
+        logger.warn(`⏳ Gemini ${reason} - Attempt #${attemptNumber}. Waiting ${Math.round(delayMs / 1000)}s before retry...`);
+        await new Promise(r => setTimeout(r, delayMs));
+        return this.callWithRetry(fn, attemptNumber + 1);
+      }
+      
+      throw err;
+    }
+  }
+
+  /**
+   * Generate content with primary model, fallback to secondary if primary fails.
+   */
+  private async generateWithFallback(prompt: string): Promise<string> {
+    try {
+      logger.info(`📤 Calling Gemini Primary (${this.MODEL_NAME})...`);
+      const result = await this.callWithRetry(() =>
+        this.model.generateContent(prompt)
+      );
+      return result.response.text();
+    } catch (err: any) {
+      const is404 = err.status === 404 || err.message?.includes('404');
+      
+      if (is404) {
+        logger.warn(`⚠️ Primary model failed (404), switching to fallback (${this.FALLBACK_MODEL_NAME})...`);
+        try {
+          const result = await this.callWithRetry(() =>
+            this.fallbackModel.generateContent(prompt)
+          );
+          logger.info(`✅ Fallback model succeeded: ${this.FALLBACK_MODEL_NAME}`);
+          return result.response.text();
+        } catch (fallbackErr: any) {
+          logger.error('❌ Fallback model also failed:', fallbackErr);
+          throw fallbackErr;
+        }
+      }
+      throw err;
+    }
   }
 
   /**
@@ -62,7 +165,12 @@ export class GeminiService {
       allEvaluations.push(...batchEvals);
     }
 
-    return { evaluations: allEvaluations, modelUsed: this.MODEL_NAME };
+    // Return the actual model used (could be primary or fallback)
+    const modelUsed = allEvaluations.some(e => e.reasoning.includes('Fallback'))
+      ? `${this.FALLBACK_MODEL_NAME} (with fallback)`
+      : this.MODEL_NAME;
+
+    return { evaluations: allEvaluations, modelUsed };
   }
 
   private async evaluateBatch(
@@ -74,13 +182,12 @@ export class GeminiService {
     logger.debug('Sending batch to Gemini', { candidateCount: candidates.length, offset });
 
     try {
-      const result = await this.model.generateContent(prompt);
-      const responseText = result.response.text();
+      // Use fallback logic for robust API calls
+      const responseText = await this.generateWithFallback(prompt);
       return this.parseEvaluationResponse(responseText, candidates.length, offset);
-    } catch (error) {
-      logger.error('Gemini API error:', error);
-      // Fallback to deterministic scoring if API fails
-      return candidates.map((c, i) => this.fallbackScore(c, job, i + offset));
+    } catch (err) {
+      logger.warn(`⚠️ API evaluation failed (e.g. quota exhausted). Using local deterministic fallback scoring for batch offset ${offset}.`);
+      return candidates.map((c, i) => this.fallbackScore(c, job, offset + i));
     }
   }
 

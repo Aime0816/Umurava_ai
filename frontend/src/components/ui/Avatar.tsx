@@ -15,7 +15,7 @@ interface AvatarProps {
 
 export function Avatar({ firstName, lastName, index = 0, size = 38 }: AvatarProps) {
   const color = AVATAR_COLORS[index % AVATAR_COLORS.length];
-  const initials = `${firstName[0] || '?'}${lastName[0] || ''}`;
+  const initials = `${firstName?.charAt(0) || '?'}${lastName?.charAt(0) || ''}`;
 
   return (
     <div

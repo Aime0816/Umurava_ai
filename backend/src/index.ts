@@ -1,10 +1,12 @@
+import dotenv from 'dotenv';
+dotenv.config(); // ← Must be FIRST, before any other imports
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import path from 'path';
-import dotenv from 'dotenv';
 
 import { connectDatabase } from './config/database';
 import { logger } from './config/logger';
@@ -16,8 +18,6 @@ import jobRoutes from './routes/job.routes';
 import candidateRoutes from './routes/candidate.routes';
 import screeningRoutes from './routes/screening.routes';
 import uploadRoutes from './routes/upload.routes';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;

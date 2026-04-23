@@ -25,6 +25,19 @@ export interface RankedCandidate {
   reasoning: string;
 }
 
+interface ScreeningWithCandidatesResult {
+  jobId: unknown;
+  candidateIds: mongoose.Types.ObjectId[];
+  results: Array<IScreening['results'][number] & { candidate?: unknown }>;
+  topCount: number;
+  status: IScreening['status'];
+  errorMessage?: string;
+  aiModel: string;
+  processingTimeMs?: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export class ScreeningService {
   /**
    * Run a full AI screening session.
@@ -148,10 +161,13 @@ export class ScreeningService {
   }
 
   /** Get a screening with populated candidate data */
-  async getScreeningWithCandidates(screeningId: string) {
+  async getScreeningWithCandidates(screeningId: string): Promise<ScreeningWithCandidatesResult> {
     const screening = await Screening.findById(screeningId)
       .populate('jobId')
-      .lean();
+      .lean<Pick<
+        ScreeningWithCandidatesResult,
+        'jobId' | 'candidateIds' | 'results' | 'topCount' | 'status' | 'errorMessage' | 'aiModel' | 'processingTimeMs' | 'createdAt' | 'updatedAt'
+      >>();
 
     if (!screening) throw new Error('Screening not found');
 
