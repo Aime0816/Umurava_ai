@@ -16,7 +16,7 @@ export function CandidatesView() {
   const results     = useAppSelector((s) => s.screening.current.results);
   const [selected, setSelected] = useState<{ candidate: Candidate; result?: RankedCandidate } | null>(null);
 
-  useEffect(() => { dispatch(fetchCandidates()); }, [dispatch]);
+  useEffect(() => { dispatch(fetchCandidates({})); }, [dispatch]);
 
   // Merge candidates with AI results if available
   const resultMap = new Map(results.map((r) => [r.candidate._id, r]));

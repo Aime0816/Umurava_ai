@@ -66,7 +66,7 @@ export function JobsView() {
           {!loading && jobs.length === 0 && (
             <div className="card">
               <div className="p-12 text-center text-white/30">
-                <div className="text-4xl mb-3 opacity-40">◎</div>
+                <div className="text-4xl mb-3 opacity-40">Ž</div>
                 <div className="text-sm">No jobs yet</div>
                 <div className="text-xs mt-1">Create a job to start screening candidates</div>
                 <button className="btn-primary btn mt-5" onClick={() => setShowCreate(true)}>
@@ -113,7 +113,7 @@ export function JobsView() {
         <div className="card self-start sticky top-5">
           {!selected ? (
             <div className="p-10 text-center text-white/30">
-              <div className="text-3xl mb-3 opacity-40">◎</div>
+              <div className="text-3xl mb-3 opacity-40">Ž</div>
               <div className="text-sm">Select a job</div>
               <div className="text-xs mt-1">to view details and screen candidates</div>
             </div>
@@ -129,6 +129,8 @@ export function JobsView() {
 }
 
 function JobDetail({ job, onScreen }: { job: Job; onScreen: (j: Job) => void }) {
+  const niceToHaveSkills = job.niceToHaveSkills ?? [];
+
   return (
     <>
       <div className="p-5 border-b border-white/[0.06]">
@@ -146,11 +148,11 @@ function JobDetail({ job, onScreen }: { job: Job; onScreen: (j: Job) => void }) 
         <div className="flex flex-wrap gap-1.5">
           {job.requiredSkills.map((s) => <span key={s} className="badge badge-info">{s}</span>)}
         </div>
-        {job.niceToHaveSkills?.length > 0 && (
+        {niceToHaveSkills.length > 0 && (
           <>
             <div className="text-[11px] text-white/35 uppercase tracking-wider mt-3 mb-2">Nice to Have</div>
             <div className="flex flex-wrap gap-1.5">
-              {job.niceToHaveSkills.map((s) => <span key={s} className="badge badge-muted">{s}</span>)}
+              {niceToHaveSkills.map((s) => <span key={s} className="badge badge-muted">{s}</span>)}
             </div>
           </>
         )}
