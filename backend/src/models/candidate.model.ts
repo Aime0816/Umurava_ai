@@ -139,7 +139,7 @@ const CandidateSchema = new Schema<ICandidate>(
   {
     firstName: { type: String, required: true, trim: true },
     lastName: { type: String, required: true, trim: true },
-    email: { type: String, required: true, trim: true, lowercase: true, unique: true },
+    email: { type: String, required: true, trim: true, lowercase: true, unique: true, sparse: true },
     headline: { type: String, required: true, trim: true },
     bio: { type: String, trim: true },
     location: { type: String, required: true, trim: true },
@@ -162,7 +162,7 @@ const CandidateSchema = new Schema<ICandidate>(
 );
 
 // ── Indexes ───────────────────────────────────────────────────
-CandidateSchema.index({ email: 1 }, { unique: true });
+// CandidateSchema.index({ email: 1 }, { unique: true, sparse: true }); // Moved to field definition
 CandidateSchema.index({ 'skills.name': 1 });
 CandidateSchema.index({ location: 1 });
 CandidateSchema.index({ createdAt: -1 });
